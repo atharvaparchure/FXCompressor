@@ -1,0 +1,383 @@
+assignment1.java 5558                                                                               import java.io.*;
+import java.util.*;
+
+class opCode {
+    String type;
+    String code;
+
+    public opCode(String type, String code) {
+        this.type = type;
+        this.code = code;
+    }
+
+    public String toString() {
+        return type + "," + code;
+    }
+}
+
+public class assignment1 {
+    public static void main(String[] args) {
+        HashMap<String, opCode> OPTAB = new HashMap<>();
+        OPTAB.put("START", new opCode("AD", "01"));
+        OPTAB.put("END", new opCode("AD", "02"));
+        OPTAB.put("ORIGIN", new opCode("AD", "03"));
+        OPTAB.put("EQU", new opCode("AD", "04"));
+        OPTAB.put("LTORG", new opCode("AD", "05"));
+
+        OPTAB.put("DC", new opCode("DL", "01"));
+        OPTAB.put("DS", new opCode("DL", "02"));
+
+        OPTAB.put("STOP", new opCode("IS", "00"));
+        OPTAB.put("ADD", new opCode("IS", "01"));
+        OPTAB.put("SUB", new opCode("IS", "02"));
+        OPTAB.put("MULT", new opCode("IS", "03"));
+        OPTAB.put("MOVER", new opCode("IS", "04"));
+        OPTAB.put("MOVEM", new opCode("IS", "05"));
+        OPTAB.put("COMP", new opCode("IS", "06"));
+        OPTAB.put("BC", new opCode("IS", "07"));
+        OPTAB.put("DIV", new opCode("IS", "08"));
+        OPTAB.put("READ", new opCode("IS", "09"));
+        OPTAB.put("PRINT", new opCode("IS", "10"));
+
+        OPTAB.put("AREG", new opCode("", "1"));
+        OPTAB.put("BREG", new opCode("", "2"));
+        OPTAB.put("CREG", new opCode("", "3"));
+
+        HashMap<String, Integer> SYMTAB = new LinkedHashMap<>();
+        int LC = 0;
+
+        try {
+            File inputFile = new File("input.txt");
+            Scanner scanner = new Scanner(inputFile);
+            BufferedWriter bw = new BufferedWriter(new FileWriter("IC.txt"));
+
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine().trim();
+                if (line.isEmpty()) continue;
+
+                String[] tokens = line.split("\\s+");
+                String ic = "";
+
+                if (tokens[0].equals("START")) {
+                    LC = Integer.parseInt(tokens[1]);
+                    ic = "-\tAD,01\t--\tC," + LC;
+                } else if (tokens[0].equals("END")) {
+                    ic = "-\tAD,02";
+                } else {
+                    String label = "", mnemonic = "", reg = "", operand = "";
+
+                    if (OPTAB.containsKey(tokens[0])) {
+                        // No label
+                        mnemonic = tokens[0];
+                        reg = tokens.length > 1 ? tokens[1] : "";
+                        operand = tokens.length > 2 ? tokens[2] : "";
+                    } else {
+                        // Label present
+                        label = tokens[0];
+                        mnemonic = tokens[1];
+                        reg = tokens.length > 2 ? tokens[2] : "";
+                        operand = tokens.length > 3 ? tokens[3] : "";
+                        SYMTAB.put(label, LC);
+                    }
+
+                    opCode opc = OPTAB.get(mnemonic);
+                    String regCode = OPTAB.containsKey(reg) ? OPTAB.get(reg).code : "--";
+
+                    if (opc.type.equals("IS")) {
+                        // Instruction
+                        if (!operand.matches("\\d+")) {
+                            if (!SYMTAB.containsKey(operand)) {
+                                SYMTAB.put(operand, -1); // Placeholder for later definition
+                            }
+                            ic = LC + "\t" + opc + "\t" + regCode + "\tS," + operand;
+                        } else {
+                            ic = LC + "\t" + opc + "\t" + regCode + "\tC," + operand;
+                        }
+                        LC++;
+                    } else if (opc.type.equals("DL")) {
+                        // DC / DS
+                        if (!label.isEmpty()) {
+                            SYMTAB.put(label, LC);
+                        }
+
+                        // Safely get operand
+                        if (operand.isEmpty()) {
+                            if (tokens.length > 2) {
+                                operand = tokens[2];
+                            }
+                        }
+
+                        if (!operand.isEmpty()) {
+                            ic = LC + "\t" + opc + "\t--\tC," + operand;
+                            LC += Integer.parseInt(operand);
+                        } else {
+                            System.out.println("⚠  Warning: Missing operand for " + mnemonic + " at line: " + line);
+                            ic = LC + "\t" + opc + "\t--\tC,0";
+                        }
+                    }
+                }
+
+                bw.write(ic + "\n");
+            }
+
+            bw.close();
+            scanner.close();
+
+            // Print symbol table
+           System.out.println("SYMTAB:");
+            int i = 1;
+            for (Map.Entry<String, Integer> entry : SYMTAB.entrySet()) {
+            String symbol = entry.getKey();
+            int address = entry.getValue();
+            String value = (address == -1) ? "--" : String.valueOf(address);
+            System.out.println(i + ". " + symbol + "\t" + value);
+            i++;
+}
+
+
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid number format in input: " + e.getMessage());
+        }
+    }
+}assignment2.java 2534                                                                               import java.io.*;
+import java.util.*;
+
+public class assignment2 {
+    public static void main(String[] args) {
+        Map<String, Integer> SYMTAB = new HashMap<>();
+        
+        // Load symbol table manually or from file
+        // For demo, let’s assume the values (you can load them from a SYMTAB file too)
+        SYMTAB.put("X", 205);
+        SYMTAB.put("Y", 206);
+        SYMTAB.put("LOOP", 201); // example label
+        
+        try {
+            File inputFile = new File("IC.txt");
+            Scanner sc = new Scanner(inputFile);
+            BufferedWriter bw = new BufferedWriter(new FileWriter("machine_code.txt"));
+
+            while (sc.hasNextLine()) {
+                String line = sc.nextLine().trim();
+                if (line.isEmpty()) continue;
+
+                String[] tokens = line.split("\\t");
+                if (tokens.length < 2) continue;
+
+                String lc = tokens[0];
+                String opc = tokens[1];  // e.g., IS,04 or AD,01
+                String reg = tokens.length > 2 ? tokens[2] : "--";
+                String operand = tokens.length > 3 ? tokens[3] : "--";
+
+                String[] parts = opc.split(",");
+                String type = parts[0];
+                String code = parts[1];
+
+                if (type.equals("IS")) {
+                    String regVal = reg.equals("--") ? "0" : reg;
+
+                    String operandVal = "000";
+                    if (operand.startsWith("S,")) {
+                        String sym = operand.split(",")[1];
+                        operandVal = String.valueOf(SYMTAB.getOrDefault(sym, 0));
+                    } else if (operand.startsWith("C,")) {
+                        operandVal = operand.split(",")[1];
+                    }
+
+                    bw.write(String.format("%s\t%s\t%s\t%s\n", lc, code, regVal, operandVal));
+                } else if (type.equals("DL")) {
+                    if (code.equals("01")) { // DC
+                        String val = operand.split(",")[1];
+                        bw.write(String.format("%s\t00\t0\t%s\n", lc, val));
+                    }
+                    // DS does not generate machine code
+                }
+                // AD directives are ignored
+            }
+
+            sc.close();
+            bw.close();
+            System.out.println(" Machine code generated in machine_code.txt");
+
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+}
+assignment3.java 5710                                                                               import java.io.*;
+import java.util.*;
+
+class MNTEntry {
+    String name;
+    int mdtIndex;
+
+    MNTEntry(String name, int mdtIndex) {
+        this.name = name;
+        this.mdtIndex = mdtIndex;
+    }
+}
+
+public class assignment3 {
+    public static void main(String[] A) {
+        String fileName = "inputfile.txt";
+        boolean inMacro = false;
+        int mdtLineIndex = 1;
+
+        List<MNTEntry> MNT = new ArrayList<>();
+        Map<String, List<String>> ALA = new LinkedHashMap<>();
+        List<String> MDT = new ArrayList<>();
+        List<String> expandedCode = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
+            String line;
+            String currentMacroName = "";
+
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+
+                if (line.equalsIgnoreCase("MACRO")) {
+                    inMacro = true;
+                    continue;
+                }
+
+                if (inMacro && !line.equalsIgnoreCase("MEND")) {
+                    // Handle macro prototype
+                    if (currentMacroName.isEmpty()) {
+                        String[] parts = line.split("\\s+");
+                        currentMacroName = parts[0];
+
+                        MNT.add(new MNTEntry(currentMacroName, mdtLineIndex));
+
+                        List<String> args = new ArrayList<>();
+                        for (int i = 1; i < parts.length; i++) {
+                            if (parts[i].startsWith("&")) {
+                                args.add(parts[i]);
+                            }
+                        }
+                        ALA.put(currentMacroName, args);
+                    }
+
+                    MDT.add(line); // Add prototype or body line to MDT
+                    mdtLineIndex++;
+                    continue;
+                }
+
+                if (inMacro && line.equalsIgnoreCase("MEND")) {
+                    MDT.add(line); // Add MEND to MDT
+                    mdtLineIndex++;
+                    inMacro = false;
+                    currentMacroName = "";
+                    continue;
+                }
+
+                // Outside macro: check for macro call
+                String[] parts = line.split("\\s+");
+                String instruction = parts[0];
+                boolean isMacroCall = false;
+
+                for (MNTEntry mntEntry : MNT) {
+                    if (instruction.equalsIgnoreCase(mntEntry.name)) {
+                        isMacroCall = true;
+
+                        List<String> actualArgs = new ArrayList<>();
+                        for (int i = 1; i < parts.length; i++) {
+                            actualArgs.add(parts[i]);
+                        }
+
+                        List<String> formalArgs = ALA.get(instruction);
+                        Map<String, String> argMap = new HashMap<>();
+                        for (int i = 0; i < formalArgs.size(); i++) {
+                            argMap.put(formalArgs.get(i), actualArgs.get(i));
+                        }
+
+                        int mdtPointer = mntEntry.mdtIndex;
+
+                        // Skip prototype
+                        mdtPointer++;
+
+                        while (mdtPointer <= MDT.size()) {
+                            String macroLine = MDT.get(mdtPointer - 1);
+                            if (macroLine.equalsIgnoreCase("MEND")) break;
+
+                            // Replace args
+                            String[] tokens = macroLine.split("\\s+");
+                            StringBuilder replacedLine = new StringBuilder(tokens[0]);
+                            for (int i = 1; i < tokens.length; i++) {
+                                String arg = tokens[i];
+                                if (argMap.containsKey(arg)) {
+                                    replacedLine.append(" ").append(argMap.get(arg));
+                                } else {
+                                    replacedLine.append(" ").append(arg);
+                                }
+                            }
+                            expandedCode.add(replacedLine.toString());
+                            mdtPointer++;
+                        }
+                        break;
+                    }
+                }
+
+                if (!isMacroCall) {
+                    expandedCode.add(line); // normal instruction
+                }
+            }
+
+            // Output
+            System.out.println("MNT (Macro Name Table):");
+            int i = 1;
+            for (MNTEntry entry : MNT) {
+                System.out.println(i + "\t" + entry.name + "\t" + entry.mdtIndex);
+                i++;
+            }
+
+            System.out.println("\nALA (Argument List Array):");
+            for (Map.Entry<String, List<String>> entry : ALA.entrySet()) {
+                System.out.println("Macro: " + entry.getKey());
+                List<String> args = entry.getValue();
+                for (int j = 0; j < args.size(); j++) {
+                    System.out.println("\t" + (j + 1) + " -> " + args.get(j));
+                }
+            }
+
+            System.out.println("\nMDT (Macro Definition Table):");
+            for (int j = 0; j < MDT.size(); j++) {
+                System.out.println((j + 1) + "\t" + MDT.get(j));
+            }
+
+            System.out.println("\nExpanded Code:");
+            for (String exp : expandedCode) {
+                System.out.println(exp);
+            }
+
+        } catch (IOException e) {
+            System.out.println("Error reading file: " + e.getMessage());
+        }
+    }
+}
+IC.txt 108                                                                                          -	AD,01	--	C,100
+100	IS,04	1	C,10
+101	IS,05	2	S,A
+102	IS,01	3	S,B
+103	DL,01	--	C,5
+108	DL,02	--	C,2
+-	AD,02
+input.txt 77                                                                                        START 100
+L1 MOVER AREG 10
+L2 MOVEM BREG A
+ADD CREG B
+A DC 5
+B DS 2
+ENDinputfile.txt 102                                                                                   MACRO
+INCR &AREG1 &AREG2
+MOVER BREG &AREG2
+ADD CREG 10
+MEND
+START
+MOVER AREG 10
+INCR D1 D2
+ENDmachine_code.txt 45                                                                                 100	04	1	10
+101	05	2	0
+102	01	3	0
+103	00	0	5
