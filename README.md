@@ -1,6 +1,3 @@
-# FXCompressor
-
-
 Java File Packer & Unpacker with GUI
 This is a Java-based desktop application that provides a graphical user interface for packing multiple files into a single archive and unpacking them back to their original state. The application features a custom UI with a "Grand Theft Auto: Vice City" theme, including a background image and sound effects.
 
@@ -35,15 +32,19 @@ Java AWT: For graphics and event handling.
 📂 Project Structure
 The project is organized into the following main packages and classes:
 
-src/
-└── org/
-    └── example/
-        ├── Main.java                   # Main class, sets up the GUI and event handling.
-        └── ShipPackerUnpacker/
-            ├── Packer.java             # Handles the logic for initiating the packing process from the GUI.
-            ├── ShipPacker.java         # Core logic for reading files and writing them into a packed archive.
-            ├── UnPacker.java           # Handles the logic for initiating the unpacking process from the GUI.
-            └── ShipUnPacker.java       # Core logic for reading the packed archive and extracting the files.
+org.example
+
+Main.java: The main class that sets up the GUI and handles events.
+
+ShipPackerUnpacker/
+
+Packer.java: Handles the logic for initiating the packing process from the GUI.
+
+ShipPacker.java: Core logic for reading files and writing them into a packed archive.
+
+UnPacker.java: Handles the logic for initiating the unpacking process from the GUI.
+
+ShipUnPacker.java: Core logic for reading the packed archive and extracting the files.
 
 ⚙️ How to Run
 Prerequisites:
